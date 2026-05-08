@@ -225,9 +225,6 @@ export default function Home() {
               <a href="#how" className="hover:text-white/80 transition-colors duration-200">
                 How it works
               </a>
-              <a href="#features" className="hover:text-white/80 transition-colors duration-200">
-                Features
-              </a>
               <a
                 href="/login"
                 className="inline-flex items-center gap-2 px-[14px] py-[7px] bg-[#6ee7b7] hover:bg-[#a7f3d0] text-[#080808] font-medium tracking-[0.05em] uppercase transition-all duration-200 rounded-sm"
@@ -345,35 +342,6 @@ export default function Home() {
         </section>
 
         {/* ── FEATURES ─────────────────────────────────────────────────── */}
-        <section id="features" className="border-t border-[#111] py-20 px-6">
-          <div className="max-w-[1100px] mx-auto">
-            <div className="font-['IBM_Plex_Mono',monospace] text-[10px] text-[#666] tracking-[0.25em] uppercase mb-12">
-              Features
-            </div>
-
-            {/* Exactly 3 items, properly spaced with Tailwind grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <FeatureCard
-                index="F-01"
-                title="Diff-aware context"
-                body="Only the changed lines are analyzed. No hallucinations from unrelated code."
-                ascii={`  ─ old line\n  + new line\n  ↳ flagged`}
-              />
-              <FeatureCard
-                index="F-02"
-                title="GitHub-native comments"
-                body="Reviews post directly as PR comments. No third-party dashboards, no new tabs."
-                ascii={`  ┌─ PR #247 ──┐\n  │ ✦ 2 issues │\n  └────────────┘`}
-              />
-              <FeatureCard
-                index="F-03"
-                title="Zero-config"
-                body="Connect and go. No YAML files. No environments."
-                ascii={` .probe\n  ────────\n  (no file)`}
-              />
-            </div>
-          </div>
-        </section>
 
         {/* ── CTA ──────────────────────────────────────────────────────── */}
         <section className="border-t border-[#111] py-24 px-6 text-center">
