@@ -111,6 +111,19 @@ test("preserves the existing review event policy", async t => {
   assert.deepEqual(requests.map(request => request.body.event), ["APPROVE", "COMMENT", "COMMENT"]);
 });
 
+test("partial reviews include bounded coverage notes and cannot auto-approve", async t => {
+  const requests = captureReview(t);
+  const notes = Array.from({ length: 25 }, (_, i) => `file-${i}.ts: ${"x".repeat(500)}`);
+  await postReview("test-token", info, { ...review(), status: "APPROVE" }, [], notes);
+  const body = requests[0].body;
+  assert.equal(body.event, "COMMENT");
+  assert.match(body.body, /This is a partial review/);
+  assert.match(body.body, /file-19.ts/);
+  assert.doesNotMatch(body.body, /file-20.ts/);
+  assert.match(body.body, /5 more coverage notes omitted/);
+  assert.ok(body.body.length < 7_000);
+});
+
 test("requires a commit SHA rather than silently posting on the latest commit", async t => {
   const requests = captureReview(t);
   await assert.rejects(postReview("test-token", { ...info, headSha: undefined }, review(), []),

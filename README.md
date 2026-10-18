@@ -64,3 +64,26 @@ The dashboard is a public setup guide, not a private account area; this flow
 does not create a persistent login session. GitHub App installations started
 directly on GitHub do not have Probe's state cookie and must restart from
 `/login` to complete this callback.
+
+### File fetching and review limits
+
+Probe lists changed files with pagination (up to GitHub's 3,000-file API limit).
+Full-file content is fetched with the installation token from the PR's source
+repository, including fork repositories when accessible, at the webhook's commit
+SHA. The GitHub App needs **Contents: Read-only** and **Pull requests: Read and
+write** permissions. Start a new PR update if the head commit changed while the
+file list was being fetched.
+
+Each review includes at most 30 text diffs, with a 20 KB limit per diff and a
+200 KB combined budget for diffs and full-file content. Diff space is reserved
+first; remaining space can provide up to 50 KB of UTF-8 context per file.
+Downloads stop at their byte limit. These limits are defined at the top of
+`lib/fetchFiles.ts`.
+
+Deleted files are reviewed from their diffs. Files without text diffs (including
+binary files) and oversized diffs are skipped. Unavailable or oversized file
+contents fall back to diff-only review. Authentication, rate-limit, server, and
+network errors fail the review instead of being treated as source code. Empty
+PRs skip Gemini; PRs with only skipped files get a coverage comment without a
+Gemini call. Partial reviews always use **COMMENT**, with up to 20 coverage
+notes in the posted review, rather than approving changes that were not checked.

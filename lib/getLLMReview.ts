@@ -1,21 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import type { PRinfo } from "./reviewer";
 import type { Review } from "./postReview";
-
-interface ReviewFile {
-  filename: string;
-  status: string;
-  additions: number;
-  deletions: number;
-  patch?: string;
-  fullContent: string;
-}
+import type { ReviewFile } from "./fetchFiles";
 
 export async function getLLMReview(files: (ReviewFile | null)[], prInfo: PRinfo): Promise<Review> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
 
   const reviewPrompt = `You are an expert senior-level code reviewer. Review the following Pull Request in depth.
+Only assess the supplied diffs and context. Other files may have been skipped;
+do not claim that the entire pull request was reviewed.
 
 **Title**: ${prInfo.prTitle}
 **Description**: ${prInfo.prBody || 'No description provided'}
