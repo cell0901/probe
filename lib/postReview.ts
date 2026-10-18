@@ -1,14 +1,14 @@
 import type { PRinfo } from "./reviewer";
 
 interface ReviewIssue {
-  severity: string;
+  severity: "critical" | "major" | "minor";
   file: string;
   line?: number;
   issue: string;
   suggestion: string;
 }
 
-interface Review {
+export interface Review {
   status: "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
   summary: string;
   issues: ReviewIssue[];

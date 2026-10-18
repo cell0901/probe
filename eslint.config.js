@@ -19,4 +19,12 @@ export default [
       }],
     },
   },
+  {
+    files: ["lib/getLLMReview.ts", "tests/geminiReview.test.mjs"],
+    rules: {
+      "turbo/no-undeclared-env-vars": ["warn", {
+        allowList: ["GEMINI_API_KEY"],
+      }],
+    },
+  },
 ];

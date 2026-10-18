@@ -1,6 +1,19 @@
 import { GoogleGenAI } from "@google/genai";
-import { PRinfo } from "./reviewer";
-export async function getLLMReview(files: any[], prInfo: PRinfo) {
+import type { PRinfo } from "./reviewer";
+import type { Review } from "./postReview";
+
+interface ReviewFile {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch?: string;
+  fullContent: string;
+}
+
+export async function getLLMReview(files: (ReviewFile | null)[], prInfo: PRinfo): Promise<Review> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
 
   const reviewPrompt = `You are an expert senior-level code reviewer. Review the following Pull Request in depth.
 
@@ -10,7 +23,7 @@ export async function getLLMReview(files: any[], prInfo: PRinfo) {
 
 ## Files Changed
 
-${files.map(f => `
+${files.filter(file => file !== null).map(f => `
 ### File: \`${f.filename}\` (${f.status})
 **Changes**: +${f.additions} / -${f.deletions}
 
@@ -44,7 +57,7 @@ ${f.fullContent}
 
 ## Response Format (JSON)
 
-\`\`\`\`json
+\`\`\`json
 {
   "status": "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
   "summary": "≤ 100-word summary of changes",
@@ -65,38 +78,66 @@ ${f.fullContent}
     }
   ]
 }
-\`\`\`\`
+\`\`\`
 
+Line numbers must be positive integers. Omit line when no precise location is available.
 IMPORTANT: Respond with ONLY the JSON object. No explanations, no markdown, no preamble.`;
 
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY!
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: reviewPrompt,
+    config: { responseMimeType: "application/json" },
   });
 
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: reviewPrompt,
-    });
-
-    console.log("llm review", response.text);
-
-    const reviewText = response.text
-
-
-    // clean the review text 
-    const cleaned = reviewText?.replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-
-    // parse the JSON
-
-    const review = JSON.parse(cleaned!)
-    return review
-  } catch (e) {
-
-    console.log("some error occured while doing llm call", e)
+  const finishReason = response.candidates?.[0]?.finishReason;
+  if (finishReason && finishReason !== "STOP") {
+    throw new Error("Gemini did not finish the review");
   }
 
+  // Let API and validation errors reach the webhook; never return a partial review.
+  return parseReview(response.text);
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasValidLocation(value: Record<string, unknown>) {
+  return isText(value.file) && (value.line === undefined ||
+    (typeof value.line === "number" && Number.isSafeInteger(value.line) && value.line > 0));
+}
+
+function isReview(value: unknown): value is Review {
+  return isObject(value) &&
+    typeof value.status === "string" &&
+    ["APPROVE", "REQUEST_CHANGES", "COMMENT"].includes(value.status) &&
+    isText(value.summary) &&
+    Array.isArray(value.issues) && value.issues.every(issue =>
+      isObject(issue) && hasValidLocation(issue) &&
+      typeof issue.severity === "string" &&
+      ["critical", "major", "minor"].includes(issue.severity) &&
+      isText(issue.issue) && isText(issue.suggestion)) &&
+    Array.isArray(value.improvements) && value.improvements.every(improvement =>
+      isObject(improvement) && hasValidLocation(improvement) && isText(improvement.suggestion));
+}
+
+export function parseReview(text: string | undefined): Review {
+  if (!isText(text)) throw new Error("Gemini returned an empty review");
+
+  // Remove only an outer code fence; preserve backticks inside suggestions.
+  const cleaned = text.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, "$1");
+  let review: unknown;
+  try {
+    review = JSON.parse(cleaned);
+  } catch {
+    throw new Error("Gemini returned invalid JSON");
+  }
+
+  if (!isReview(review)) throw new Error("Gemini returned an invalid review structure");
+  return review;
 }
