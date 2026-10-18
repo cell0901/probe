@@ -1,16 +1,15 @@
-"use client";
+const errors: Record<string, string> = {
+  invalid_state: "Your setup attempt expired or could not be verified. Please try again.",
+  authorization_failed: "GitHub authorization could not be completed. Please try again.",
+  missing_code: "GitHub did not send an authorization code. Please start again.",
+  not_configured: "GitHub setup is not configured. Please contact the app owner.",
+};
 
-export default function LoginPage() {
-  const handleInstall = () => {
-    // This combines installation + user OAuth
-    const params = new URLSearchParams({
-      client_id: process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID!,
-      state: 'random-state-string' // CSRF protection
-    });
-
-    window.location.href =
-      `https://github.com/apps/probe-01/installations/new?${params}`;
-  };
+export default async function LoginPage({ searchParams }: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const message = error && Object.hasOwn(errors, error) ? errors[error] : undefined;
   return (
     <div className="min-h-screen flex items-center justify-center relative bg-white font-['IBM_Plex_Sans',sans-serif]">
       {/* ── Subtle Graph Paper Grid ───────────────────────────────────────── */}
@@ -29,11 +28,13 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-[360px] bg-white border border-[#eaeaea] p-10 pb-12 flex flex-col items-center shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
 
         <h1 className="text-[22px] font-bold text-[#111] mb-8 tracking-tight">
-          SIGN IN
+          CONNECT GITHUB
         </h1>
 
-        <button
-          onClick={handleInstall}
+        {message && <p role="alert" className="mb-6 text-sm text-red-700">{message}</p>}
+
+        <a
+          href="/api/install"
           className="w-full flex items-center justify-center gap-3 border border-[#e2e2e2] bg-[#fbfbfb] hover:bg-[#f4f4f4] hover:border-[#d5d5d5] transition-all duration-200 py-3.5 px-4"
         >
           {/* GitHub SVG Icon */}
@@ -43,7 +44,7 @@ export default function LoginPage() {
           <span className="font-['IBM_Plex_Mono',monospace] text-[11px] text-[#333] tracking-[0.05em] uppercase mt-0.5">
             Continue with GitHub
           </span>
-        </button>
+        </a>
       </div>
 
     </div>

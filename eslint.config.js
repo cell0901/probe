@@ -11,4 +11,12 @@ export default [
       }],
     },
   },
+  {
+    files: ["app/api/callback/route.ts", "tests/onboarding.test.mjs"],
+    rules: {
+      "turbo/no-undeclared-env-vars": ["warn", {
+        allowList: ["GITHUB_CLIENT_SECRET"],
+      }],
+    },
+  },
 ];

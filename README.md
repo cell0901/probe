@@ -38,3 +38,29 @@ from the GitHub App's **Advanced → Recent deliveries** page.
 
 Run `npm test` with Node.js 22.18+ to check webhook authentication, event filtering,
 payload validation, and failure responses without calling GitHub or Gemini.
+
+### GitHub installation and authorization
+
+In your GitHub App settings, enable **Request user authorization (OAuth) during
+installation** and set the **first Callback URL** to
+`https://YOUR_HOST/api/callback` (or `http://localhost:3000/api/callback` for local
+development). Use the same host when opening Probe so the temporary setup cookie
+can be returned to the callback. Set `NEXT_PUBLIC_GITHUB_CLIENT_ID` and
+`GITHUB_CLIENT_SECRET` in `.env`. The installation link currently targets the
+`probe-01` GitHub App in `app/api/install/route.ts`; change that slug if using
+your own app.
+
+Start from `/login`. The server creates a random state in a ten-minute HttpOnly,
+SameSite=Lax cookie, then redirects to GitHub to install and authorize the app.
+The callback checks that state before exchanging the code, verifies the GitHub
+user response, clears the temporary cookie, and redirects to `/dashboard` for
+instructions. Failed or expired attempts return to `/login` with a fixed error
+message and a retry link. Production should be served over HTTPS so the cookie
+is marked Secure.
+
+User OAuth tokens are used only inside the callback and are never logged,
+stored, or returned to the browser. Reviews continue to use installation tokens.
+The dashboard is a public setup guide, not a private account area; this flow
+does not create a persistent login session. GitHub App installations started
+directly on GitHub do not have Probe's state cookie and must restart from
+`/login` to complete this callback.
